@@ -1,0 +1,143 @@
+/*
+ * Program: Factorial using a Stack (forward and backward)
+ * Task   : Compute 1!, 2!, 3! ... n! where each factorial is built from
+ *          the previous one, i.e. n! = (n-1)! x n
+ *
+ * My approach:
+ *   - I implemented the stack myself using an array and a "top" index.
+ *   - Forward  stack: I start at 1 and go up to n. Every factorial I
+ *                     calculate is pushed on the stack, so the stack
+ *                     ends up holding 1!, 2!, ... n! with n! on top.
+ *   - Backward stack: I start at n and go down to 1, pushing the numbers
+ *                     (this is like the calls waiting in recursion). Then
+ *                     I pop them one by one and multiply to "unwind" the
+ *                     stack and get n!.
+ *
+ * Note: I used unsigned long long, which can only hold up to 20!.
+ *       21! is too big and would overflow, so I limit n to 20.
+ */
+
+#include <stdio.h>
+
+#define MAX 20            /* maximum size of the stack (and max n) */
+
+/* ---------- Stack structure ---------- */
+typedef struct {
+    unsigned long long data[MAX];   /* array that stores the values   */
+    int top;                        /* index of the top element, -1 = empty */
+} Stack;
+
+/* Set the stack to empty */
+void init(Stack *s) {
+    s->top = -1;
+}
+
+/* Returns 1 if the stack has no elements */
+int isEmpty(Stack *s) {
+    return s->top == -1;
+}
+
+/* Returns 1 if the stack is full (prevents overflow) */
+int isFull(Stack *s) {
+    return s->top == MAX - 1;
+}
+
+/* Put a value on top of the stack */
+void push(Stack *s, unsigned long long value) {
+    if (isFull(s)) {
+        printf("Stack overflow! Cannot push %llu\n", value);
+        return;
+    }
+    s->data[++(s->top)] = value;    /* move top up, then store */
+}
+
+/* Remove and return the value on top of the stack */
+unsigned long long pop(Stack *s) {
+    if (isEmpty(s)) {
+        printf("Stack underflow! Nothing to pop\n");
+        return 0;
+    }
+    return s->data[(s->top)--];     /* read value, then move top down */
+}
+
+/* Look at the top value without removing it */
+unsigned long long peek(Stack *s) {
+    if (isEmpty(s)) {
+        return 0;
+    }
+    return s->data[s->top];
+}
+
+/* ---------- FORWARD STACK ----------
+ * Goes 1 -> n. 1! is pushed first, then each next factorial is found by
+ * taking the top of the stack (the previous factorial) and multiplying
+ * it by i, then pushing the answer.
+ */
+unsigned long long factorialForward(int n) {
+    Stack s;
+    init(&s);
+
+    printf("\n--- Forward stack ---\n");
+    push(&s, 1);                         /* 1! = 1 */
+    printf("1! = 1\n");
+
+    for (int i = 2; i <= n; i++) {
+        unsigned long long prev = peek(&s);   /* (i-1)! is on top */
+        unsigned long long current = prev * i;/* i! = (i-1)! x i  */
+        push(&s, current);
+        printf("%d! = %d! x %d = %llu\n", i, i - 1, i, current);
+    }
+
+    return pop(&s);                      /* top of the stack is n! */
+}
+
+/* ---------- BACKWARD STACK ----------
+ * Goes n -> 1. First I push n, n-1, ... 1 onto the stack. Because a stack
+ * is LIFO, the first number I pop is 1, then 2, and so on up to n.
+ * Multiplying while popping gives 1!, 2!, ... n! (same as recursion
+ * unwinding).
+ */
+unsigned long long factorialBackward(int n) {
+    Stack s;
+    init(&s);
+
+    printf("\n--- Backward stack ---\n");
+
+    /* Phase 1: push n down to 1 */
+    for (int i = n; i >= 1; i--) {
+        push(&s, i);
+    }
+
+    /* Phase 2: pop and multiply */
+    unsigned long long result = 1;
+    while (!isEmpty(&s)) {
+        unsigned long long x = pop(&s);
+        result = result * x;
+        printf("popped %llu -> %llu! = %llu\n", x, x, result);
+    }
+
+    return result;
+}
+
+/* ---------- Main ---------- */
+int main(void) {
+    int n;
+
+    printf("Enter n (1 to %d): ", MAX);
+    if (scanf("%d", &n) != 1 || n < 1 || n > MAX) {
+        printf("Invalid input. n must be between 1 and %d.\n", MAX);
+        return 1;
+    }
+
+    unsigned long long f1 = factorialForward(n);
+    unsigned long long f2 = factorialBackward(n);
+
+    printf("\nForward stack  result: %d! = %llu\n", n, f1);
+    printf("Backward stack result: %d! = %llu\n", n, f2);
+
+    if (f1 == f2) {
+        printf("Both methods give the same answer.\n");
+    }
+
+    return 0;
+}
